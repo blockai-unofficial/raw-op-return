@@ -28,6 +28,24 @@ var getTransaction = function(txHash, callback) {
   });
 };
 
+var getWallet = function(callback) {
+  helloblock.faucet.get(1, function(err, res, body) {
+    if (err) {
+      return done(err);
+    }
+    var privateKeyWIF = body.privateKeyWIF;
+    var address = body.address;
+    var unspentOutputs = body.unspents;
+    var signTransaction = signFromPrivateKeyWIF(privateKeyWIF);
+    var wallet = {
+      signTransaction: signFromPrivateKeyWIF(privateKeyWIF),
+      unspentOutputs: unspentOutputs,
+      address: address
+    }
+    callback(err, wallet);
+  });
+};
+
 var randomString = function(length) {
   var characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
   var output = '';
@@ -38,18 +56,27 @@ var randomString = function(length) {
   return output;
 };
 
+var randomHex = function(length) {
+  var characters = "0123456789abcdef";
+  var output = '';
+  for (var i = 0; i < length; i++) {
+    var r = Math.floor(Math.random() * characters.length);
+    output += characters.substring(r, r + 1);
+  }
+  return output;
+};
+
 describe("raw-op-return", function() {
 
-  it("should post a random string as data", function(done) {
+  it("should post a random string of 40 bytes as data", function(done) {
     var data = new Buffer(randomString(40));
-    helloblock.faucet.get(1, function(err, res, body) {
+    getWallet(function(err, wallet) {
       if (err) {
         return done(err);
       }
-      var privateKeyWIF = body.privateKeyWIF;
-      var address = body.address;
-      var unspentOutputs = body.unspents;
-      var signTransaction = signFromPrivateKeyWIF(privateKeyWIF);
+      var address = wallet.address;
+      var unspentOutputs = wallet.unspentOutputs;
+      var signTransaction = wallet.signTransaction;
       rawOpReturn.post({
         data: data,
         address: address,
@@ -70,14 +97,13 @@ describe("raw-op-return", function() {
 
   it("should not post more than 40 bytes of data", function(done) {
     var data = new Buffer(randomString(41));
-    helloblock.faucet.get(1, function(err, res, body) {
+    getWallet(function(err, wallet) {
       if (err) {
         return done(err);
       }
-      var privateKeyWIF = body.privateKeyWIF;
-      var address = body.address;
-      var unspentOutputs = body.unspents;
-      var signTransaction = signFromPrivateKeyWIF(privateKeyWIF);
+      var address = wallet.address;
+      var unspentOutputs = wallet.unspentOutputs;
+      var signTransaction = wallet.signTransaction;
       rawOpReturn.post({
         data: data,
         address: address,
@@ -94,14 +120,13 @@ describe("raw-op-return", function() {
 
   it("should not post less than 1 byte of data", function(done) {
     var data = new Buffer(0);
-    helloblock.faucet.get(1, function(err, res, body) {
+    getWallet(function(err, wallet) {
       if (err) {
         return done(err);
       }
-      var privateKeyWIF = body.privateKeyWIF;
-      var address = body.address;
-      var unspentOutputs = body.unspents;
-      var signTransaction = signFromPrivateKeyWIF(privateKeyWIF);
+      var address = wallet.address;
+      var unspentOutputs = wallet.unspentOutputs;
+      var signTransaction = wallet.signTransaction;
       rawOpReturn.post({
         data: data,
         address: address,
@@ -117,15 +142,14 @@ describe("raw-op-return", function() {
   });
 
   it("should post as hex", function(done) {
-    var hexData = "deadbeef";
-    helloblock.faucet.get(1, function(err, res, body) {
+    var hexData = randomHex(8);
+    getWallet(function(err, wallet) {
       if (err) {
         return done(err);
       }
-      var privateKeyWIF = body.privateKeyWIF;
-      var address = body.address;
-      var unspentOutputs = body.unspents;
-      var signTransaction = signFromPrivateKeyWIF(privateKeyWIF);
+      var address = wallet.address;
+      var unspentOutputs = wallet.unspentOutputs;
+      var signTransaction = wallet.signTransaction;
       rawOpReturn.post({
         hexData: hexData,
         address: address,
@@ -145,15 +169,14 @@ describe("raw-op-return", function() {
   });
 
   it("should post as string", function(done) {
-    var stringData = "raw-op-return test suite";
-    helloblock.faucet.get(1, function(err, res, body) {
+    var stringData = randomString(8);
+    getWallet(function(err, wallet) {
       if (err) {
         return done(err);
       }
-      var privateKeyWIF = body.privateKeyWIF;
-      var address = body.address;
-      var unspentOutputs = body.unspents;
-      var signTransaction = signFromPrivateKeyWIF(privateKeyWIF);
+      var address = wallet.address;
+      var unspentOutputs = wallet.unspentOutputs;
+      var signTransaction = wallet.signTransaction;
       rawOpReturn.post({
         stringData: stringData,
         address: address,
