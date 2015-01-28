@@ -124,11 +124,3 @@ var rawOpReturn = {
 }
 
 module.exports = rawOpReturn;
-
-
-
-
-
-
-
-
