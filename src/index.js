@@ -61,6 +61,7 @@ var createSignedTransactionWithData = function(options, callback) {
 var getDatum = function(options, callback) {
   var transactions = options.transactions;
   var datum = [];
+  var outputs = [];
   transactions.forEach(function(tx) {
     tx.outputs.forEach(function(output) {
       if (output.type == 'nulldata') {
@@ -69,11 +70,12 @@ var getDatum = function(options, callback) {
           var data = scriptPubKey.slice(4, 84);
           var bufferData = new Buffer(data, "hex");
           datum.push(bufferData);
+          outputs.push(output);
         }
       }
     });
   });
-  callback(false, datum)
+  callback(false, datum, outputs)
 };
 
 var post = function(options, callback) {
@@ -114,9 +116,10 @@ var post = function(options, callback) {
 };
 
 var scan = function(tx, callback) {
-  getDatum({transactions:[tx]}, function(err, txs) {
+  getDatum({transactions:[tx]}, function(err, txs, txo) {
     var scannedTx = {
-      data: txs[0]
+      data: txs[0],
+      output: txo[0]
     }
     callback(err, scannedTx);
   });
