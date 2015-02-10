@@ -30,11 +30,12 @@ var createSignedTransactionWithData = function(options, callback) {
     return;
   };
   var address = options.address;
-  var fee = options.fee || 1000;
+  var fee = options.fee || function(){return 1000}; // fee estimator function
   var payloadValue = options.value || 0;
   var privateKeyWIF = options.privateKeyWIF;
   var payloadScript = Bitcoin.Script.fromChunks([Bitcoin.opcodes.OP_RETURN, data]);
   var tx = new Bitcoin.TransactionBuilder();
+  tx.addOutput(payloadScript, payloadValue);
   var unspentOutputs = options.unspentOutputs;
   var unspentValue = 0;
   for (var i = unspentOutputs.length - 1; i >= 0; i--) {
@@ -44,12 +45,11 @@ var createSignedTransactionWithData = function(options, callback) {
     }
     unspentValue += unspentOutput.value;
     tx.addInput(unspentOutput.txHash, unspentOutput.index);
-    if (unspentValue - fee >= 0) {
+    if (unspentValue - fee(tx.buildIncomplete()) >= 0) {
       break;
     }
   };
-  tx.addOutput(payloadScript, payloadValue);
-  tx.addOutput(address, unspentValue - fee);
+  tx.addOutput(address, unspentValue - fee(tx.buildIncomplete()));
   signTransaction(tx, function(err, signedTx) {
     var signedTxBuilt = signedTx.build();
     var signedTxHex = signedTxBuilt.toHex();
