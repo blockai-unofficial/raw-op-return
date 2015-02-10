@@ -95,6 +95,35 @@ describe("raw-op-return", function() {
     });
   });
 
+  it("should use a fee estimator function", function(done) {
+    var data = new Buffer(randomString(40));
+    getWallet(function(err, wallet) {
+      if (err) {
+        return done(err);
+      }
+      var address = wallet.address;
+      var unspentOutputs = wallet.unspentOutputs;
+      var signTransaction = wallet.signTransaction;
+      rawOpReturn.post({
+        fee: Bitcoin.networks.testnet.estimateFee,
+        data: data,
+        address: address,
+        unspentOutputs: unspentOutputs,
+        propagateTransaction: propagateTransaction,
+        signTransaction: signTransaction
+      }, function(error, postedTx) {
+        expect(postedTx.txHash).toBeDefined();
+        getTransaction(postedTx.txHash, function(err, tx) {
+          expect(tx.fees).toBe(10000);
+          rawOpReturn.scan(tx, function(err, scannedTx) {
+            expect(scannedTx.data.toString('utf8')).toBe(data.toString('utf8'));
+            done();
+          });
+        });
+      });
+    });
+  });
+
   it("should not post more than 40 bytes of data", function(done) {
     var data = new Buffer(randomString(41));
     getWallet(function(err, wallet) {
