@@ -31,6 +31,7 @@ var createSignedTransactionWithData = function(options, callback) {
   };
   var address = options.address;
   var fee = options.fee || 1000;
+  var payloadValue = options.value || 0;
   var privateKeyWIF = options.privateKeyWIF;
   var payloadScript = Bitcoin.Script.fromChunks([Bitcoin.opcodes.OP_RETURN, data]);
   var tx = new Bitcoin.TransactionBuilder();
@@ -47,7 +48,7 @@ var createSignedTransactionWithData = function(options, callback) {
       break;
     }
   };
-  tx.addOutput(payloadScript, 0);
+  tx.addOutput(payloadScript, payloadValue);
   tx.addOutput(address, unspentValue - fee);
   signTransaction(tx, function(err, signedTx) {
     var signedTxBuilt = signedTx.build();
