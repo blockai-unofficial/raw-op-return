@@ -1,6 +1,6 @@
 {
   "name": "raw-op-return",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Post and read raw OP_RETURN messages on the Bitcoin blockchain.",
   "main": "src/index.js",
   "scripts": {
