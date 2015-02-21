@@ -30,10 +30,12 @@ var createSignedTransactionWithData = function(options, callback) {
     return;
   };
   var address = options.address;
-  var fee = options.fee || 1000;
+  var fee = options.fee || function(){return 1000}; // fee estimator function
+  var payloadValue = options.value || 0;
   var privateKeyWIF = options.privateKeyWIF;
   var payloadScript = Bitcoin.Script.fromChunks([Bitcoin.opcodes.OP_RETURN, data]);
   var tx = new Bitcoin.TransactionBuilder();
+  tx.addOutput(payloadScript, payloadValue);
   var unspentOutputs = options.unspentOutputs;
   var compare = function(a,b) {
     if (a.value < b.value)
@@ -51,12 +53,11 @@ var createSignedTransactionWithData = function(options, callback) {
     }
     unspentValue += unspentOutput.value;
     tx.addInput(unspentOutput.txHash, unspentOutput.index);
-    if (unspentValue - fee >= 0) {
+    if (unspentValue - fee(tx.buildIncomplete()) >= 0) {
       break;
     }
   };
-  tx.addOutput(payloadScript, 0);
-  tx.addOutput(address, unspentValue - fee);
+  tx.addOutput(address, unspentValue - fee(tx.buildIncomplete()));
   signTransaction(tx, function(err, signedTx) {
     var signedTxBuilt = signedTx.build();
     var signedTxHex = signedTxBuilt.toHex();
@@ -68,6 +69,7 @@ var createSignedTransactionWithData = function(options, callback) {
 var getDatum = function(options, callback) {
   var transactions = options.transactions;
   var datum = [];
+  var outputs = [];
   transactions.forEach(function(tx) {
     tx.outputs.forEach(function(output) {
       if (output.type == 'nulldata') {
@@ -76,11 +78,12 @@ var getDatum = function(options, callback) {
           var data = scriptPubKey.slice(4, 84);
           var bufferData = new Buffer(data, "hex");
           datum.push(bufferData);
+          outputs.push(output);
         }
       }
     });
   });
-  callback(false, datum)
+  callback(false, datum, outputs)
 };
 
 var post = function(options, callback) {
@@ -121,9 +124,10 @@ var post = function(options, callback) {
 };
 
 var scan = function(tx, callback) {
-  getDatum({transactions:[tx]}, function(err, txs) {
+  getDatum({transactions:[tx]}, function(err, txs, txo) {
     var scannedTx = {
-      data: txs[0]
+      data: txs[0],
+      output: txo[0]
     }
     callback(err, scannedTx);
   });
