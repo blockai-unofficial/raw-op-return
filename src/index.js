@@ -1,67 +1,43 @@
 var Bitcoin = require("bitcoinjs-lib");
 
-var signFromPrivateKeyWIF = function(privateKeyWIF) {
-  return function(tx, callback) {
-    var key = Bitcoin.ECKey.fromWIF(privateKeyWIF);
-    tx.sign(0, key); 
-    callback(false, tx);
-  }
-};
-
-var signFromTransactionHex = function(signTransactionHex) {
-  if (!signTransactionHex) {
-    return false;
-  }
-  return function(tx, callback) {
-    var txHex = tx.tx.toHex();
-    signTransactionHex(txHex, function(error, signedTxHex) {
-      var signedTx = Bitcoin.TransactionBuilder.fromTransaction(Bitcoin.Transaction.fromHex(signedTxHex));
-      callback(error, signedTx);
-    });
-  };
-};
-
 var createSignedTransactionWithData = function(options, callback) {
-  var signTransaction = options.signTransaction || signFromTransactionHex(options.signTransactionHex) || signFromPrivateKeyWIF(options.privateKeyWIF);
-  options.signTransaction = signTransaction;
+  var commonBlockchain = options.commonBlockchain;
+  var commonWallet = options.commonWallet;
   var data = options.data;
   if (data.length > 40) {
     callback("too large", false);
     return;
   };
-  var address = options.address;
+  var address = commonWallet.address;
   var fee = options.fee || 1000;
-  var privateKeyWIF = options.privateKeyWIF;
   var payloadScript = Bitcoin.Script.fromChunks([Bitcoin.opcodes.OP_RETURN, data]);
   var tx = new Bitcoin.TransactionBuilder();
-  var unspentOutputs = options.unspentOutputs;
-  var compare = function(a,b) {
-    if (a.value < b.value)
-      return -1;
-    if (a.value > b.value)
-      return 1;
-    return 0;
-  };
-  unspentOutputs.sort(compare);
-  var unspentValue = 0;
-  for (var i = unspentOutputs.length - 1; i >= 0; i--) {
-    var unspentOutput = unspentOutputs[i];
-    if (unspentOutput.value === 0) {
-      continue;
-    }
-    unspentValue += unspentOutput.value;
-    tx.addInput(unspentOutput.txHash, unspentOutput.index);
-    if (unspentValue - fee >= 0) {
-      break;
-    }
-  };
-  tx.addOutput(payloadScript, 0);
-  tx.addOutput(address, unspentValue - fee);
-  signTransaction(tx, function(err, signedTx) {
-    var signedTxBuilt = signedTx.build();
-    var signedTxHex = signedTxBuilt.toHex();
-    var txHash = signedTxBuilt.getId();
-    callback(false, signedTxHex, txHash);
+  commonBlockchain.Addresses.Unspents([address], function(err, addresses_unspents) {
+    var unspentOutputs = addresses_unspents[0];
+    var compare = function(a,b) {
+      if (a.value < b.value)
+        return -1;
+      if (a.value > b.value)
+        return 1;
+      return 0;
+    };
+    unspentOutputs.sort(compare);
+    var unspentValue = 0;
+    for (var i = unspentOutputs.length - 1; i >= 0; i--) {
+      var unspentOutput = unspentOutputs[i];
+      if (unspentOutput.value === 0) {
+        continue;
+      }
+      unspentValue += unspentOutput.value;
+      tx.addInput(unspentOutput.txid, unspentOutput.vout);
+      if (unspentValue - fee >= 0) {
+        break;
+      }
+    };
+    tx.addOutput(payloadScript, 0);
+    tx.addOutput(address, unspentValue - fee);
+    var txHex = tx.tx.toHex();
+    commonWallet.signTransactionHex(txHex, callback);
   });
 };
 
@@ -69,9 +45,9 @@ var getDatum = function(options, callback) {
   var transactions = options.transactions;
   var datum = [];
   transactions.forEach(function(tx) {
-    tx.outputs.forEach(function(output) {
-      if (output.type == 'nulldata') {
-        var scriptPubKey = output.scriptPubKey;
+    tx.vout.forEach(function(output) {
+      if (output.scriptPubKey.type == 'nulldata') {
+        var scriptPubKey = output.scriptPubKey.hex;
         if (scriptPubKey.slice(0,2) == "6a") {
           var data = scriptPubKey.slice(4, 84);
           var bufferData = new Buffer(data, "hex");
@@ -100,13 +76,15 @@ var post = function(options, callback) {
   if (data.length < 1) {
     return callback("too small", false);
   }
+  var commonBlockchain = options.commonBlockchain;
+  var commonWallet = options.commonWallet;
   var propagateTransaction = options.propagateTransaction;
   options.data = data;
-  createSignedTransactionWithData(options, function(err, signedTxHex, txHash) {
+  createSignedTransactionWithData(options, function(err, signedTxHex, txid) {
     var propagateResponse = function(err, res) {
       var postTx = {
         data: options.data,
-        txHash: txHash
+        txid: txid
       }
       if (err) {
         postTx.propagateResponse = "failure";
@@ -116,7 +94,7 @@ var post = function(options, callback) {
       }
       callback(err, postTx);
     }
-    propagateTransaction(signedTxHex, propagateResponse);
+    commonBlockchain.Transactions.Propagate(signedTxHex, propagateResponse);
   });
 };
 
