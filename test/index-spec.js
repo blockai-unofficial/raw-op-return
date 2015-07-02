@@ -42,13 +42,7 @@ var seed = bitcoin.crypto.sha256("test");
 var wallet = new bitcoin.Wallet(seed, bitcoin.networks.testnet);
 var address = wallet.generateAddress();
 
-var signMessageBase64 = function (message, cb) {
-  var key = wallet.getPrivateKey(0);
-  var network = bitcoin.networks.testnet;
-  cb(null, bitcoin.Message.sign(key, message, network).toString('base64'));
-};
-
-var signTransactionHex = function(txHex, cb) {
+var signRawTransaction = function(txHex, cb) {
   var tx = bitcoin.Transaction.fromHex(txHex);
   var signedTx = wallet.signWith(tx, [address]);
   var txid = signedTx.getId();
@@ -57,8 +51,7 @@ var signTransactionHex = function(txHex, cb) {
 };
 
 var commonWallet = {
-  signTransactionHex: signTransactionHex,
-  signMessageBase64: signMessageBase64,
+  signRawTransaction: signRawTransaction,
   address: address
 }
 

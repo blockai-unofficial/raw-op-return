@@ -37,7 +37,7 @@ var createSignedTransactionWithData = function(options, callback) {
     tx.addOutput(payloadScript, 0);
     tx.addOutput(address, unspentValue - fee);
     var txHex = tx.tx.toHex();
-    commonWallet.signTransactionHex(txHex, callback);
+    commonWallet.signRawTransaction(txHex, callback);
   });
 };
 
