@@ -1,10 +1,10 @@
 {
   "name": "raw-op-return",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Post and read raw OP_RETURN messages on the Bitcoin blockchain.",
   "main": "src/index.js",
   "scripts": {
-    "test": "source .env && ./node_modules/.bin/jasmine-node test/ --forceexit --verbose --captureExceptions",
+    "test": "./node_modules/.bin/jasmine-node test/ --forceexit --verbose --captureExceptions",
     "test-dev": "source .env && ./node_modules/.bin/jasmine-node test/ --verbose --autotest --captureExceptions --color --watch src/"
   },
   "repository": {
@@ -27,7 +27,7 @@
     "bitcoinjs-lib": "^1.4.3"
   },
   "devDependencies": {
-    "abstract-common-blockchain": "^0.1.4",
-    "jasmine-node": "^1.14.5"
+    "jasmine-node": "^1.14.5",
+    "mem-common-blockchain": "0.0.1"
   }
 }
