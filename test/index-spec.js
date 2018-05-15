@@ -202,4 +202,25 @@ describe('raw-op-return', function () {
       })
     })
   })
+
+  it('should post random strings of 80 bytes as data', function (done) {
+    var data = [ new Buffer(randomString(80)), new Buffer(randomString(80)) ]
+    rawOpReturn.post({
+      data: data,
+      commonBlockchain: commonBlockchain,
+      commonWallet: commonWallet
+    }, function (error, postedTx) {
+      if (error) {}
+      commonBlockchain.Transactions.Get([postedTx.txid], function (err, txs) {
+        if (err) {}
+        var tx = txs[0]
+          rawOpReturn.scan(tx, function (err, scannedTx) {
+          if (err) {}
+          expect(scannedTx.data.toString('utf8')).toBe(data.toString('utf8'))
+          done()
+        })
+      })
+    })
+  })
+
 })
