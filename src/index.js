@@ -77,7 +77,7 @@ var post = function (options, callback) {
     if(!Array.isArray(options.stringData))
       options.stringData=[options.stringData]
     options.stringData.forEach(function(string){
-      data.push(new Buffer(string))
+      data.push(Buffer.from(string))
     })
   }
   if(options.data){
