@@ -4,13 +4,18 @@ var createSignedTransactionWithData = function (options, callback) {
   var commonBlockchain = options.commonBlockchain
   var commonWallet = options.commonWallet
   var data = options.data
-  if (data.length > 80) {
-    callback('too large', false)
-    return
+  if(!Array.isArray(data))
+    data = [data]
+  for(var i=0; i<data.length; i++){
+    if (data[i].length > 80) {
+      callback('too large', false)
+      return
+    }
   }
   var address = commonWallet.address
   var fee = options.fee || 1000
-  var payloadScript = bitcoin.script.nullDataOutput(data)
+  var payloadScripts = []
+  data.forEach(function(entry){payloadScripts.push(bitcoin.script.nullDataOutput(entry))})
   var tx = new bitcoin.TransactionBuilder(bitcoin.networks[commonWallet.network])
   commonBlockchain.Addresses.Unspents([address], function (err, addresses_unspents) {
     if (err) {
@@ -39,7 +44,9 @@ var createSignedTransactionWithData = function (options, callback) {
         break
       }
     }
-    tx.addOutput(payloadScript, 0)
+    payloadScripts.forEach(function(payloadScript){
+      tx.addOutput(payloadScript, 0)
+    })
     tx.addOutput(address, unspentValue - fee)
     var txHex = tx.tx.toHex()
     commonWallet.signRawTransaction(txHex, callback)
@@ -65,19 +72,35 @@ var getDatum = function (options, callback) {
 }
 
 var post = function (options, callback) {
-  var data
-  if (options.stringData) {
-    data = new Buffer(options.stringData)
-  } else if (options.data) {
-    data = options.data
-  } else if (options.hexData) {
-    data = new Buffer(options.hexData, 'hex')
+  var data = []
+  if(options.stringData){
+    if(!Array.isArray(options.stringData))
+      options.stringData=[options.stringData]
+    options.stringData.forEach(function(string){
+      data.push(Buffer.from(string))
+    })
   }
-  if (data.length > 80) {
-    return callback('too large', false)
+  if(options.data){
+    if(!Array.isArray(options.data))
+      options.data=[options.data]
+    options.data.forEach(function(buffer){
+      data.push(buffer)
+    })
   }
-  if (data.length < 1) {
-    return callback('too small', false)
+  if(options.hexData){
+    if(!Array.isArray(options.hexData))
+      options.hexData=[options.hexData]
+    options.hexData.forEach(function(hex){
+      data.push(new Buffer(hex,'hex'))
+    })
+  }
+  for(var i=0; i<data.length; i++){
+    if (data[i].length > 80) {
+      return callback('too large', false)
+    }
+    if (data[i].length < 1) {
+      return callback('too small', false)
+    }
   }
   var commonBlockchain = options.commonBlockchain
   options.data = data
@@ -104,7 +127,7 @@ var post = function (options, callback) {
 var scan = function (tx, callback) {
   getDatum({transactions: [tx]}, function (err, txs) {
     var scannedTx = {
-      data: txs[0]
+        data: (txs.length>1)?txs:txs[0]
     }
     callback(err, scannedTx)
   })
